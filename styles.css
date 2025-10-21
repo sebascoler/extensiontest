@@ -207,6 +207,8 @@ body {
     transition: all 0.3s ease;
     animation: slideIn 0.3s ease-out;
     border: 2px solid transparent;
+    cursor: move;
+    cursor: grab;
 }
 
 @keyframes slideIn {
@@ -239,6 +241,37 @@ body {
         opacity: 0;
         transform: translateX(20px);
     }
+}
+
+.todo-item.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+    transform: scale(1.05);
+    box-shadow: var(--shadow-lg);
+}
+
+.todo-item.drag-over {
+    border-color: var(--primary);
+    background: var(--bg-primary);
+    transform: translateY(-4px);
+}
+
+.drag-handle {
+    cursor: grab;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    padding: 4px;
+}
+
+.todo-item:hover .drag-handle {
+    opacity: 1;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
 }
 
 .checkbox-wrapper {

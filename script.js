@@ -2,6 +2,8 @@
 let todos = [];
 let currentFilter = 'all';
 let editingId = null;
+let draggedElement = null;
+let draggedIndex = null;
 
 // DOM elements
 const todoInput = document.getElementById('todoInput');
@@ -97,6 +99,14 @@ function setupEventListeners() {
             }
         }
     });
+
+    // Drag and drop event listeners
+    todoList.addEventListener('dragstart', handleDragStart);
+    todoList.addEventListener('dragover', handleDragOver);
+    todoList.addEventListener('drop', handleDrop);
+    todoList.addEventListener('dragend', handleDragEnd);
+    todoList.addEventListener('dragenter', handleDragEnter);
+    todoList.addEventListener('dragleave', handleDragLeave);
 }
 
 // Load todos from Chrome storage
@@ -251,7 +261,7 @@ function renderTodos() {
     todoList.innerHTML = filteredTodos.map(todo => {
         if (editingId === todo.id) {
             return `
-                <li class="todo-item ${todo.completed ? 'completed' : ''}" data-id="${todo.id}">
+                <li class="todo-item ${todo.completed ? 'completed' : ''}" data-id="${todo.id}" draggable="false">
                     <input
                         type="text"
                         class="todo-edit-input"
@@ -276,7 +286,14 @@ function renderTodos() {
         }
 
         return `
-            <li class="todo-item ${todo.completed ? 'completed' : ''}" data-id="${todo.id}">
+            <li class="todo-item ${todo.completed ? 'completed' : ''}" data-id="${todo.id}" draggable="true">
+                <div class="drag-handle">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </div>
                 <div class="checkbox-wrapper">
                     <input
                         type="checkbox"
@@ -312,6 +329,91 @@ function saveEditFromInput(id) {
     if (input) {
         saveEdit(id, input.value);
     }
+}
+
+// Drag and drop handlers
+function handleDragStart(e) {
+    const todoItem = e.target.closest('.todo-item');
+    if (!todoItem) return;
+
+    draggedElement = todoItem;
+    draggedIndex = Array.from(todoList.children).indexOf(todoItem);
+
+    todoItem.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', todoItem.innerHTML);
+}
+
+function handleDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+}
+
+function handleDragEnter(e) {
+    const todoItem = e.target.closest('.todo-item');
+    if (todoItem && todoItem !== draggedElement) {
+        todoItem.classList.add('drag-over');
+    }
+}
+
+function handleDragLeave(e) {
+    const todoItem = e.target.closest('.todo-item');
+    if (todoItem) {
+        todoItem.classList.remove('drag-over');
+    }
+}
+
+function handleDrop(e) {
+    if (e.stopPropagation) {
+        e.stopPropagation();
+    }
+
+    const dropTarget = e.target.closest('.todo-item');
+    if (!dropTarget || dropTarget === draggedElement) {
+        return false;
+    }
+
+    const dropIndex = Array.from(todoList.children).indexOf(dropTarget);
+
+    // Reorder todos array
+    const filteredTodos = getFilteredTodos();
+    const draggedTodo = filteredTodos[draggedIndex];
+
+    // Find the actual indices in the full todos array
+    const draggedTodoId = draggedTodo.id;
+    const dropTodoId = parseInt(dropTarget.dataset.id);
+
+    const actualDraggedIndex = todos.findIndex(t => t.id === draggedTodoId);
+    const actualDropIndex = todos.findIndex(t => t.id === dropTodoId);
+
+    // Remove from old position
+    const [movedTodo] = todos.splice(actualDraggedIndex, 1);
+
+    // Insert at new position
+    todos.splice(actualDropIndex, 0, movedTodo);
+
+    saveTodos();
+    renderTodos();
+
+    return false;
+}
+
+function handleDragEnd(e) {
+    const todoItem = e.target.closest('.todo-item');
+    if (todoItem) {
+        todoItem.classList.remove('dragging');
+    }
+
+    // Remove drag-over class from all items
+    document.querySelectorAll('.todo-item').forEach(item => {
+        item.classList.remove('drag-over');
+    });
+
+    draggedElement = null;
+    draggedIndex = null;
 }
 
 // Escape HTML to prevent XSS
