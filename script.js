@@ -17,8 +17,6 @@ init();
 
 function init() {
     loadTodos();
-    renderTodos();
-    updateTaskCount();
     displayDate();
     setupEventListeners();
 }
@@ -47,6 +45,58 @@ function setupEventListeners() {
     });
 
     clearCompletedBtn.addEventListener('click', clearCompleted);
+
+    // Event delegation for todo list items
+    todoList.addEventListener('click', (e) => {
+        const todoItem = e.target.closest('.todo-item');
+        if (!todoItem) return;
+
+        const todoId = parseInt(todoItem.dataset.id);
+
+        // Handle checkbox toggle
+        if (e.target.classList.contains('todo-checkbox')) {
+            toggleTodo(todoId);
+            return;
+        }
+
+        // Handle edit button
+        if (e.target.closest('.btn-edit')) {
+            startEdit(todoId);
+            return;
+        }
+
+        // Handle delete button
+        if (e.target.closest('.btn-delete')) {
+            deleteTodo(todoId);
+            return;
+        }
+
+        // Handle save button (in edit mode)
+        if (e.target.closest('.btn-save')) {
+            saveEditFromInput(todoId);
+            return;
+        }
+
+        // Handle cancel button (in edit mode)
+        if (e.target.closest('.btn-cancel')) {
+            cancelEdit();
+            return;
+        }
+    });
+
+    // Handle keyboard events for edit input
+    todoList.addEventListener('keydown', (e) => {
+        if (e.target.classList.contains('todo-edit-input')) {
+            const todoItem = e.target.closest('.todo-item');
+            const todoId = parseInt(todoItem.dataset.id);
+
+            if (e.key === 'Enter') {
+                saveEditFromInput(todoId);
+            } else if (e.key === 'Escape') {
+                cancelEdit();
+            }
+        }
+    });
 }
 
 // Load todos from Chrome storage
@@ -110,6 +160,14 @@ function deleteTodo(id) {
 function startEdit(id) {
     editingId = id;
     renderTodos();
+    // Focus the input after rendering
+    setTimeout(() => {
+        const editInput = document.getElementById(`edit-input-${id}`);
+        if (editInput) {
+            editInput.focus();
+            editInput.setSelectionRange(editInput.value.length, editInput.value.length);
+        }
+    }, 0);
 }
 
 // Save edited todo
@@ -201,12 +259,12 @@ function renderTodos() {
                         id="edit-input-${todo.id}"
                     >
                     <div class="todo-actions">
-                        <button class="btn-icon btn-save" onclick="saveEditFromInput(${todo.id})">
+                        <button class="btn-icon btn-save">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="20 6 9 17 4 12"></polyline>
                             </svg>
                         </button>
-                        <button class="btn-icon btn-cancel" onclick="cancelEdit()">
+                        <button class="btn-icon btn-cancel">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="18" y1="6" x2="6" y2="18"></line>
                                 <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -224,18 +282,17 @@ function renderTodos() {
                         type="checkbox"
                         class="todo-checkbox"
                         ${todo.completed ? 'checked' : ''}
-                        onclick="toggleTodo(${todo.id})"
                     >
                 </div>
                 <span class="todo-text">${escapeHtml(todo.text)}</span>
                 <div class="todo-actions">
-                    <button class="btn-icon btn-edit" onclick="startEdit(${todo.id})">
+                    <button class="btn-icon btn-edit">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                         </svg>
                     </button>
-                    <button class="btn-icon btn-delete" onclick="deleteTodo(${todo.id})">
+                    <button class="btn-icon btn-delete">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="3 6 5 6 21 6"></polyline>
                             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -245,27 +302,6 @@ function renderTodos() {
             </li>
         `;
     }).join('');
-
-    // Focus on edit input if editing
-    if (editingId) {
-        const editInput = document.getElementById(`edit-input-${editingId}`);
-        if (editInput) {
-            editInput.focus();
-            editInput.setSelectionRange(editInput.value.length, editInput.value.length);
-
-            editInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    saveEditFromInput(editingId);
-                }
-            });
-
-            editInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') {
-                    cancelEdit();
-                }
-            });
-        }
-    }
 
     updateTaskCount();
 }
@@ -284,11 +320,3 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
-
-// Make functions globally available
-window.toggleTodo = toggleTodo;
-window.deleteTodo = deleteTodo;
-window.startEdit = startEdit;
-window.saveEdit = saveEdit;
-window.saveEditFromInput = saveEditFromInput;
-window.cancelEdit = cancelEdit;
